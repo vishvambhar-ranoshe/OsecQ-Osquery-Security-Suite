@@ -396,7 +396,7 @@ OsecQ is intended for authorized security testing, incident response, and defens
 
 **Vishvambhar Ranoshe**
 
-> Started with zero osquery knowledge. Spent 10 days going from the basics of `osqueryi` and `.tables` all the way to building a production-grade security suite with 74+ detection queries, real-time monitoring, MITRE ATT&CK aligned IR, and an auto-saving report engine. Every query in OsecQ was learned, understood, and written from scratch — not copied. This project is proof that consistent daily learning compounds into something real.
+> All the way to building a production-grade security suite with 74+ detection queries, real-time monitoring, MITRE ATT&CK aligned IR, and an auto-saving report engine. Not assembled from tutorials—engineered through understanding.
 
 ---
 
