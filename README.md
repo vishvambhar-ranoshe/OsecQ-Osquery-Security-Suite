@@ -2,6 +2,7 @@ OsecQ — Osquery Security Suite
 markdown# OsecQ — Osquery Security Suite
 
 <div align="center">
+  
 ██████╗ ███████╗███████╗ ██████╗ ██████╗
 ██╔═══██╗██╔════╝██╔════╝██╔════╝██╔═══██╗
 ██║   ██║███████╗█████╗  ██║     ██║   ██║
