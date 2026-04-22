@@ -132,22 +132,22 @@ Watch the system continuously with live delta tracking between cycles.
 
 | Query | Alert |
 |---|---|
-| Active user sessions | — |
-| Recently started processes | — |
-| Top memory consumers | — |
-| Established connections | — |
-| Listening TCP ports | — |
+| Active user sessions | - |
+| Recently started processes | - |
+| Top memory consumers | - |
+| Established connections | - |
+| Listening TCP ports | - |
 | Connections to rare ports | Yes |
 | Processes in /tmp or /dev/shm | Yes |
-| Root processes | — |
+| Root processes | - |
 | Zombie processes | Yes |
-| Files modified in /etc last hour | — |
-| New files in /tmp last hour | — |
-| Cron jobs watch | — |
-| SSH authorized_keys watch | — |
-| Process count per user | — |
+| Files modified in /etc last hour | - |
+| New files in /tmp last hour | - |
+| Cron jobs watch | - |
+| SSH authorized_keys watch | - |
+| Process count per user | - |
 | Open files in suspicious paths | Yes |
-| Disk usage | — |
+| Disk usage | - |
 
 > In continuous mode, OsecQ tracks result counts between cycles and shows delta indicators  you see the exact moment a new connection opens or a new process starts.
 
