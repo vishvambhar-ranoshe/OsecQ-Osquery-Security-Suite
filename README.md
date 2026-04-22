@@ -54,14 +54,14 @@ OsecQ is a unified, menu-driven terminal security suite that turns **osquery int
 
 ## Features
 
-- **Live Banner Dashboard** — privilege level, osquery status, process count, active connections and findings count updated on every menu open
-- **4 Security Modules** — each with full scan, quick scan, and individual query modes
-- **74+ Pre-built Queries** — covering the full attack lifecycle
-- **Critical Finding Alerts** — web shells, reverse shells, backdoor accounts auto-flagged and saved instantly
-- **Auto Report Saving** — every investigation saved as JSON + TXT automatically
-- **MITRE ATT&CK Aligned** — IR module organized by all 8 attack phases
-- **Continuous Monitor Mode** — live refresh with delta tracking between cycles
-- **Zero Extra Dependencies** — just Python 3, osquery, and tabulate
+- **Live Banner Dashboard** : privilege level, osquery status, process count, active connections and findings count updated on every menu open
+- **4 Security Modules** : each with full scan, quick scan, and individual query modes
+- **74+ Pre-built Queries** : covering the full attack lifecycle
+- **Critical Finding Alerts** : web shells, reverse shells, backdoor accounts auto-flagged and saved instantly
+- **Auto Report Saving** : every investigation saved as JSON + TXT automatically
+- **MITRE ATT&CK Aligned** : IR module organized by all 8 attack phases
+- **Continuous Monitor Mode** : live refresh with delta tracking between cycles
+- **Zero Extra Dependencies** : just Python 3, osquery, and tabulate
 
 ---
 
@@ -161,19 +161,19 @@ Structured investigation aligned with MITRE ATT&CK framework.
 
 | Phase | Queries |
 |---|---|
-| Phase 1 — Initial Access | SSH brute force detection, web file drops |
-| Phase 2 — Execution | Web shells, interpreter processes, cmdline patterns |
-| Phase 3 — Persistence | Cron, systemd, SSH keys, startup scripts, SUID, backdoor accounts |
-| Phase 4 — Privilege Escalation | Sudo members, docker group, root processes, sudoers integrity |
-| Phase 5 — Defense Evasion | Deleted binaries, LD_PRELOAD, binary hash verification, kernel modules |
-| Phase 6 — Lateral Movement | SSH keys, known_hosts, outbound SSH, credential file access |
-| Phase 7 — Command and Control | Reverse shells, C2 ports, unusual DNS resolvers |
-| Phase 8 — Exfiltration | High write processes, archive creation, upload activity |
+| Phase 1 : Initial Access | SSH brute force detection, web file drops |
+| Phase 2 : Execution | Web shells, interpreter processes, cmdline patterns |
+| Phase 3 : Persistence | Cron, systemd, SSH keys, startup scripts, SUID, backdoor accounts |
+| Phase 4 : Privilege Escalation | Sudo members, docker group, root processes, sudoers integrity |
+| Phase 5 : Defense Evasion | Deleted binaries, LD_PRELOAD, binary hash verification, kernel modules |
+| Phase 6 : Lateral Movement | SSH keys, known_hosts, outbound SSH, credential file access |
+| Phase 7 : Command and Control | Reverse shells, C2 ports, unusual DNS resolvers |
+| Phase 8 : Exfiltration | High write processes, archive creation, upload activity |
 
 **Modes:**
-- **Full IR Investigation** — run all 8 phases sequentially
-- **Single Phase** — focus on one specific attack phase
-- **Single Query** — run one specific IR query
+- **Full IR Investigation** : run all 8 phases sequentially
+- **Single Phase** : focus on one specific attack phase
+- **Single Query** : run one specific IR query
 
 **Total: 25+ queries across 8 phases**
 
@@ -357,18 +357,18 @@ Cannot be fooled by LD_PRELOAD rootkits that hook userspace tools like ps, netst
 
 - Requires osquery installed separately on the target machine
 - Event tables such as file_events and process_events require osqueryd daemon running
-- Local machine only — no remote querying (use Fleet for multi-host deployments)
+- Local machine only - no remote querying (use Fleet for multi-host deployments)
 - No historical session comparison between runs
 
 ---
 
 ## Future Roadmap
 
-- [ ] YARA scanning module — malware pattern matching against file content
-- [ ] Fleet integration — query multiple machines from one interface
-- [ ] Timeline view — correlate events across modules by timestamp
-- [ ] Slack and email alerting — push critical findings to communication channels
-- [ ] Custom query builder — write and save your own queries from the UI
+- [ ] YARA scanning module : malware pattern matching against file content
+- [ ] Fleet integration : query multiple machines from one interface
+- [ ] Timeline view : correlate events across modules by timestamp
+- [ ] Slack and email alerting : push critical findings to communication channels
+- [ ] Custom query builder : write and save your own queries from the UI
 
 ---
 
@@ -399,7 +399,7 @@ OsecQ is intended for authorized security testing, incident response, and defens
 
 ## License
 
-MIT License — free to use, modify, and distribute with attribution.
+MIT License - free to use, modify, and distribute with attribution.
 
 ---
 
@@ -409,6 +409,6 @@ MIT License — free to use, modify, and distribute with attribution.
 
 *Built with osquery + Python on Kali Linux*
 
-*If this helped you — give it a ⭐ on GitHub*
+*If this helped you, give it a ⭐ on GitHub*
 
 </div>
