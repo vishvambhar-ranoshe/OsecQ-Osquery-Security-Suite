@@ -1,0 +1,106 @@
+{
+  "module": "recon",
+  "description": "System Reconnaissance Queries",
+  "queries": [
+    {
+      "name": "System Identity",
+      "desc": "Hostname, UUID, CPU, RAM, hardware vendor",
+      "sql": "SELECT hostname, uuid, cpu_brand, cpu_physical_cores, cpu_logical_cores, ROUND(physical_memory/1073741824.0,2) AS memory_gb, hardware_vendor, hardware_model FROM system_info;"
+    },
+    {
+      "name": "OS Version",
+      "desc": "Operating system name, version, architecture",
+      "sql": "SELECT name, version, major, minor, patch, arch, platform FROM os_version;"
+    },
+    {
+      "name": "Kernel Info",
+      "desc": "Kernel version and boot arguments",
+      "sql": "SELECT version, arguments, path FROM kernel_info;"
+    },
+    {
+      "name": "System Uptime",
+      "desc": "How long the system has been running",
+      "sql": "SELECT days, hours, minutes, total_seconds FROM uptime;"
+    },
+    {
+      "name": "Human User Accounts",
+      "desc": "All interactive user accounts (UID >= 1000)",
+      "sql": "SELECT uid, gid, username, directory, shell FROM users WHERE uid >= 1000 ORDER BY uid;"
+    },
+    {
+      "name": "System Accounts",
+      "desc": "All system and service accounts (UID < 1000)",
+      "sql": "SELECT uid, username, shell, description FROM users WHERE uid < 1000 ORDER BY uid;"
+    },
+    {
+      "name": "Root Equivalent Accounts",
+      "desc": "Accounts with UID 0 — should only be root",
+      "sql": "SELECT username, uid, gid, shell, directory FROM users WHERE uid = 0;"
+    },
+    {
+      "name": "Privileged Group Members",
+      "desc": "Users in sudo, docker, shadow, adm groups",
+      "sql": "SELECT users.username, users.uid, groups.groupname FROM user_groups JOIN users ON user_groups.uid = users.uid JOIN groups ON user_groups.gid = groups.gid WHERE groups.groupname IN ('sudo','docker','shadow','adm','wheel') ORDER BY groups.groupname, users.username;"
+    },
+    {
+      "name": "Currently Logged In Users",
+      "desc": "Active login sessions right now",
+      "sql": "SELECT user, tty, host, pid, datetime(time,'unixepoch') AS login_time FROM logged_in_users WHERE type = 'user' ORDER BY time DESC;"
+    },
+    {
+      "name": "Login History (Last 24h)",
+      "desc": "All logins in the last 24 hours",
+      "sql": "SELECT username, tty, host, datetime(time,'unixepoch') AS login_time FROM last WHERE username != '' AND username != 'reboot' AND time > (strftime('%s','now') - 86400) ORDER BY time DESC;"
+    },
+    {
+      "name": "Remote SSH Logins",
+      "desc": "Historical SSH remote login sessions",
+      "sql": "SELECT username, host, tty, datetime(time,'unixepoch') AS login_time FROM last WHERE host != '' AND host != ':0' AND host NOT LIKE 'localhost%' AND username != '' ORDER BY time DESC LIMIT 20;"
+    },
+    {
+      "name": "Network Interfaces",
+      "desc": "All network interfaces with IPv4 addresses",
+      "sql": "SELECT interface, address, mask FROM interface_addresses WHERE address NOT LIKE '%:%' ORDER BY interface;"
+    },
+    {
+      "name": "MAC Addresses",
+      "desc": "MAC address of each network interface",
+      "sql": "SELECT name, mac, type FROM interface_details WHERE mac != '' ORDER BY name;"
+    },
+    {
+      "name": "Default Gateway",
+      "desc": "Default network gateway and interface",
+      "sql": "SELECT gateway, interface FROM routes WHERE destination = '0.0.0.0' AND netmask = '0' ORDER BY metric ASC LIMIT 1;"
+    },
+    {
+      "name": "DNS Resolvers",
+      "desc": "Configured DNS server addresses",
+      "sql": "SELECT type, address FROM dns_resolvers WHERE type = 'nameserver';"
+    },
+    {
+      "name": "Disk Mounts",
+      "desc": "Mounted filesystems with usage",
+      "sql": "SELECT path, device, type, ROUND(100.0-(blocks_free*100.0/blocks),1) AS percent_used FROM mounts WHERE blocks > 0 AND type NOT IN ('tmpfs','devtmpfs','proc','sysfs','cgroup','cgroup2') ORDER BY path;"
+    },
+    {
+      "name": "Disk Encryption Status",
+      "desc": "Encryption status of all block devices",
+      "sql": "SELECT name, uuid, encrypted, type, encryption_status FROM disk_encryption ORDER BY name;"
+    },
+    {
+      "name": "Installed Packages Count",
+      "desc": "Total number of installed packages",
+      "sql": "SELECT COUNT(*) AS total_packages FROM deb_packages;"
+    },
+    {
+      "name": "Kernel Modules",
+      "desc": "All loaded kernel modules",
+      "sql": "SELECT name, size, status FROM kernel_modules ORDER BY name LIMIT 30;"
+    },
+    {
+      "name": "Shell History Summary",
+      "desc": "Command count per user in shell history",
+      "sql": "SELECT username, COUNT(*) AS command_count FROM shell_history GROUP BY username ORDER BY command_count DESC;"
+    }
+  ]
+}

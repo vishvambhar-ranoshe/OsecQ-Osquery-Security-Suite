@@ -1,0 +1,196 @@
+{
+  "module": "ir",
+  "description": "Incident Response Queries — Organized by Attack Phase",
+  "phases": [
+    {
+      "phase": "PHASE 1 — Initial Access",
+      "queries": [
+        {
+          "name": "Failed SSH Logins",
+          "desc": "Brute force attempt indicator",
+          "sql": "SELECT address, COUNT(*) AS failed_attempts, datetime(MAX(time),'unixepoch') AS last_attempt FROM user_events WHERE message LIKE '%Failed%' OR message LIKE '%Invalid user%' OR message LIKE '%authentication failure%' GROUP BY address HAVING failed_attempts > 3 ORDER BY failed_attempts DESC;"
+        },
+        {
+          "name": "Successful Logins",
+          "desc": "All successful authentication events",
+          "sql": "SELECT uid, message, address, terminal, datetime(time,'unixepoch') AS event_time FROM user_events WHERE message LIKE '%Accepted%' OR message LIKE '%session opened%' ORDER BY time DESC LIMIT 20;"
+        },
+        {
+          "name": "New Web Files",
+          "desc": "Recently created files in web directories",
+          "sql": "SELECT path, filename, uid, mode, size, datetime(mtime,'unixepoch') AS modified FROM file WHERE (path LIKE '/var/www/%%' OR path LIKE '/srv/www/%%') AND mtime > (strftime('%s','now') - 86400) AND type = 'regular' ORDER BY mtime DESC;"
+        }
+      ]
+    },
+    {
+      "phase": "PHASE 2 — Execution",
+      "queries": [
+        {
+          "name": "Shell Spawned by Server",
+          "desc": "Web shell execution — highest severity",
+          "sql": "SELECT child.pid, child.name AS shell, child.cmdline, parent.name AS spawned_by, parent.path, datetime(child.start_time,'unixepoch') AS started FROM processes AS child JOIN processes AS parent ON child.parent = parent.pid WHERE child.name IN ('bash','sh','zsh','dash','fish','ksh') AND parent.name IN ('apache2','nginx','php','php-fpm','python','python3','ruby','node','java','tomcat');"
+        },
+        {
+          "name": "Suspicious Process Execution",
+          "desc": "Processes with dangerous command patterns",
+          "sql": "SELECT pid, name, path, cmdline, uid, datetime(start_time,'unixepoch') AS started FROM processes WHERE cmdline LIKE '%/dev/tcp/%' OR cmdline LIKE '%base64 -d%' OR cmdline LIKE '%curl%bash%' OR cmdline LIKE '%wget%bash%' OR cmdline LIKE '%-i >& /dev/%' ORDER BY start_time DESC;"
+        },
+        {
+          "name": "Interpreter Processes",
+          "desc": "Python, Perl, Ruby processes currently running",
+          "sql": "SELECT pid, name, path, cmdline, uid, datetime(start_time,'unixepoch') AS started FROM processes WHERE name IN ('python','python3','perl','ruby','php','lua','node') ORDER BY start_time DESC;"
+        }
+      ]
+    },
+    {
+      "phase": "PHASE 3 — Persistence",
+      "queries": [
+        {
+          "name": "Cron Jobs",
+          "desc": "All cron job files and their owners",
+          "sql": "SELECT path, filename, uid, mode, size, datetime(mtime,'unixepoch') AS modified FROM file WHERE (path LIKE '/etc/cron.d/%' OR path LIKE '/var/spool/cron/crontabs/%' OR path LIKE '/etc/cron.daily/%' OR path LIKE '/etc/cron.hourly/%' OR path LIKE '/etc/cron.weekly/%') AND type = 'regular' ORDER BY mtime DESC;"
+        },
+        {
+          "name": "Systemd Services",
+          "desc": "All systemd service files",
+          "sql": "SELECT path, filename, uid, mode, datetime(mtime,'unixepoch') AS modified FROM file WHERE (path LIKE '/etc/systemd/system/%' OR path LIKE '/lib/systemd/system/%') AND filename LIKE '%.service' AND type = 'regular' ORDER BY mtime DESC LIMIT 30;"
+        },
+        {
+          "name": "SSH Authorized Keys",
+          "desc": "SSH backdoor keys across all users",
+          "sql": "SELECT path, uid, gid, mode, size, datetime(mtime,'unixepoch') AS modified, datetime(atime,'unixepoch') AS last_accessed FROM file WHERE path LIKE '/home/%/.ssh/authorized_keys' OR path = '/root/.ssh/authorized_keys' ORDER BY mtime DESC;"
+        },
+        {
+          "name": "Startup Scripts",
+          "desc": "Shell init and profile script state",
+          "sql": "SELECT path, filename, uid, mode, datetime(mtime,'unixepoch') AS modified FROM file WHERE (path LIKE '/etc/profile.d/%' OR path = '/etc/rc.local' OR path LIKE '/home/%/.bashrc' OR path LIKE '/home/%/.bash_profile' OR path = '/root/.bashrc' OR path = '/root/.bash_profile') AND type = 'regular' ORDER BY mtime DESC;"
+        },
+        {
+          "name": "SUID Binaries",
+          "desc": "All SUID set binaries — privilege escalation risk",
+          "sql": "SELECT path, filename, uid, mode, datetime(mtime,'unixepoch') AS modified FROM file WHERE (path LIKE '/usr/bin/%' OR path LIKE '/bin/%' OR path LIKE '/usr/local/bin/%' OR path LIKE '/tmp/%') AND mode LIKE '4%' AND type = 'regular' ORDER BY mtime DESC;"
+        },
+        {
+          "name": "Backdoor Root Accounts",
+          "desc": "Accounts with UID=0 other than root",
+          "sql": "SELECT username, uid, gid, shell, directory, description FROM users WHERE uid = 0 AND username != 'root';"
+        }
+      ]
+    },
+    {
+      "phase": "PHASE 4 — Privilege Escalation",
+      "queries": [
+        {
+          "name": "Sudo Group Members",
+          "desc": "All users with sudo privileges",
+          "sql": "SELECT users.username, users.uid, groups.groupname FROM user_groups JOIN users ON user_groups.uid = users.uid JOIN groups ON user_groups.gid = groups.gid WHERE groups.groupname IN ('sudo','wheel','admin') ORDER BY users.username;"
+        },
+        {
+          "name": "Docker Group Members",
+          "desc": "Docker group members — trivial root escalation path",
+          "sql": "SELECT users.username, users.uid FROM user_groups JOIN users ON user_groups.uid = users.uid JOIN groups ON user_groups.gid = groups.gid WHERE groups.groupname = 'docker';"
+        },
+        {
+          "name": "Root Processes from Non-Standard Paths",
+          "desc": "Root processes not in standard system directories",
+          "sql": "SELECT pid, name, path, cmdline, datetime(start_time,'unixepoch') AS started FROM processes WHERE uid = 0 AND path != '' AND path NOT LIKE '/usr/%' AND path NOT LIKE '/bin/%' AND path NOT LIKE '/sbin/%' AND path NOT LIKE '/lib/%' AND path NOT LIKE '/opt/%' ORDER BY start_time DESC;"
+        },
+        {
+          "name": "Sudoers File Integrity",
+          "desc": "Hash of sudoers file — detect unauthorized changes",
+          "sql": "SELECT path, md5, sha256 FROM hash WHERE path = '/etc/sudoers' OR path LIKE '/etc/sudoers.d/%';"
+        }
+      ]
+    },
+    {
+      "phase": "PHASE 5 — Defense Evasion",
+      "queries": [
+        {
+          "name": "Deleted But Running Binaries",
+          "desc": "Processes whose executable was deleted from disk",
+          "sql": "SELECT pid, name, path, uid, cmdline, datetime(start_time,'unixepoch') AS started FROM processes WHERE path LIKE '% (deleted)%' ORDER BY start_time DESC;"
+        },
+        {
+          "name": "LD_PRELOAD Injection",
+          "desc": "Library injection — rootkit indicator",
+          "sql": "SELECT p.pid, p.name, p.path, e.value AS ld_preload, u.username FROM process_envs AS e JOIN processes AS p ON e.pid = p.pid JOIN users AS u ON p.uid = u.uid WHERE e.key = 'LD_PRELOAD' AND e.value != '';"
+        },
+        {
+          "name": "Critical Binary Hashes",
+          "desc": "Hashes of key system tools — detect trojaned binaries",
+          "sql": "SELECT f.path, f.size, datetime(f.mtime,'unixepoch') AS modified, h.md5, h.sha256 FROM file AS f JOIN hash AS h ON f.path = h.path WHERE f.path IN ('/bin/bash','/bin/ls','/bin/ps','/usr/bin/sudo','/usr/bin/ssh','/usr/bin/who','/bin/find','/usr/bin/top','/usr/bin/last') ORDER BY f.path;"
+        },
+        {
+          "name": "Kernel Module Anomalies",
+          "desc": "Modules with non-Live status — rootkit indicator",
+          "sql": "SELECT name, size, status, address FROM kernel_modules WHERE status != 'Live' OR size = 0 ORDER BY name;"
+        }
+      ]
+    },
+    {
+      "phase": "PHASE 6 — Lateral Movement",
+      "queries": [
+        {
+          "name": "SSH Key Files",
+          "desc": "All SSH private and public key files",
+          "sql": "SELECT path, uid, mode, size, datetime(mtime,'unixepoch') AS modified FROM file WHERE path LIKE '%/.ssh/%' AND (filename LIKE 'id_%' OR filename LIKE '%.pub') ORDER BY mtime DESC;"
+        },
+        {
+          "name": "Known Hosts Files",
+          "desc": "SSH known_hosts — reveals outbound SSH targets",
+          "sql": "SELECT path, uid, size, datetime(atime,'unixepoch') AS last_accessed, datetime(mtime,'unixepoch') AS modified FROM file WHERE path LIKE '%/.ssh/known_hosts' ORDER BY atime DESC;"
+        },
+        {
+          "name": "Outbound SSH Connections",
+          "desc": "Active connections on port 22 outbound",
+          "sql": "SELECT p.name, p.pid, p.cmdline, s.remote_address, s.remote_port, datetime(p.start_time,'unixepoch') AS started FROM process_open_sockets AS s JOIN processes AS p ON s.pid = p.pid WHERE s.remote_port = 22 AND s.action = 'connect' AND s.family = 2 AND s.remote_address != '127.0.0.1';"
+        },
+        {
+          "name": "Credential File Access",
+          "desc": "Processes touching credential files",
+          "sql": "SELECT pid, name, path, cmdline, uid FROM processes WHERE cmdline LIKE '%/etc/shadow%' OR cmdline LIKE '%id_rsa%' OR cmdline LIKE '%/.aws/credentials%' OR cmdline LIKE '%/.gnupg/%' ORDER BY pid;"
+        }
+      ]
+    },
+    {
+      "phase": "PHASE 7 — Command & Control",
+      "queries": [
+        {
+          "name": "Reverse Shell Candidates",
+          "desc": "Interpreters with active external connections",
+          "sql": "SELECT p.pid, p.name, p.path, p.cmdline, s.remote_address, s.remote_port FROM processes AS p JOIN process_open_sockets AS s ON p.pid = s.pid WHERE p.name IN ('bash','sh','nc','ncat','netcat','python','python3','perl','ruby') AND s.state = 'ESTABLISHED' AND s.family = 2 AND s.remote_address != '127.0.0.1';"
+        },
+        {
+          "name": "Connections to C2 Ports",
+          "desc": "Connections to known attacker-used ports",
+          "sql": "SELECT p.name, p.pid, s.remote_address, s.remote_port FROM process_open_sockets AS s JOIN processes AS p ON s.pid = p.pid WHERE s.remote_port IN (4444,4445,1337,1338,9001,9002,2222,3333,5555,6666,7777,8888) AND s.state = 'ESTABLISHED' AND s.family = 2;"
+        },
+        {
+          "name": "Unusual DNS Resolvers",
+          "desc": "DNS servers not in common trusted list",
+          "sql": "SELECT type, address FROM dns_resolvers WHERE address NOT IN ('8.8.8.8','8.8.4.4','1.1.1.1','1.0.0.1','9.9.9.9','208.67.222.222') AND type = 'nameserver';"
+        }
+      ]
+    },
+    {
+      "phase": "PHASE 8 — Exfiltration",
+      "queries": [
+        {
+          "name": "High Disk Write Processes",
+          "desc": "Processes writing large amounts of data",
+          "sql": "SELECT pid, name, path, uid, ROUND(disk_bytes_written/1048576.0,2) AS mb_written, ROUND(disk_bytes_read/1048576.0,2) AS mb_read FROM processes WHERE disk_bytes_written > 10485760 ORDER BY disk_bytes_written DESC LIMIT 10;"
+        },
+        {
+          "name": "Archive Creation",
+          "desc": "tar/zip operations on sensitive directories",
+          "sql": "SELECT pid, name, cmdline, uid FROM processes WHERE (cmdline LIKE '%tar %' OR cmdline LIKE '%zip %') AND (cmdline LIKE '%/etc/%' OR cmdline LIKE '%/home/%' OR cmdline LIKE '%passwd%' OR cmdline LIKE '%shadow%') ORDER BY pid;"
+        },
+        {
+          "name": "Upload Activity",
+          "desc": "curl or wget upload operations",
+          "sql": "SELECT pid, name, cmdline, uid FROM processes WHERE (cmdline LIKE '%curl%' OR cmdline LIKE '%wget%') AND (cmdline LIKE '%-T %' OR cmdline LIKE '%--upload%' OR cmdline LIKE '%-X POST%' OR cmdline LIKE '%--data%') ORDER BY pid;"
+        }
+      ]
+    }
+  ]
+}

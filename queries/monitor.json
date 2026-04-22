@@ -1,0 +1,106 @@
+{
+  "module": "monitor",
+  "description": "Continuous Monitoring Queries — Live System Watch",
+  "queries": [
+    {
+      "name": "Active User Sessions",
+      "desc": "Who is logged in right now",
+      "sql": "SELECT user, tty, host, pid, datetime(time,'unixepoch') AS login_time FROM logged_in_users WHERE type = 'user' ORDER BY time DESC;"
+    },
+    {
+      "name": "Running Process Count",
+      "desc": "Total number of processes currently running",
+      "sql": "SELECT COUNT(*) AS total_processes FROM processes;"
+    },
+    {
+      "name": "Top Memory Consumers",
+      "desc": "Top 10 processes by memory usage",
+      "sql": "SELECT pid, name, uid, ROUND(resident_size/1048576.0,2) AS memory_mb FROM processes ORDER BY resident_size DESC LIMIT 10;"
+    },
+    {
+      "name": "Recently Started Processes",
+      "desc": "Processes started in the last 10 minutes",
+      "sql": "SELECT pid, name, path, uid, cmdline, datetime(start_time,'unixepoch') AS started FROM processes WHERE start_time > (strftime('%s','now') - 600) ORDER BY start_time DESC;"
+    },
+    {
+      "name": "Established Connections",
+      "desc": "All active outbound network connections",
+      "sql": "SELECT p.name, p.pid, s.local_address, s.local_port, s.remote_address, s.remote_port, s.state FROM process_open_sockets AS s JOIN processes AS p ON s.pid = p.pid WHERE s.state = 'ESTABLISHED' AND s.family = 2 AND s.remote_address != '127.0.0.1' ORDER BY s.remote_port;"
+    },
+    {
+      "name": "Listening TCP Ports",
+      "desc": "All TCP ports currently listening",
+      "sql": "SELECT p.name, p.pid, l.port, l.address FROM listening_ports AS l JOIN processes AS p ON l.pid = p.pid WHERE l.protocol = 6 ORDER BY l.port;"
+    },
+    {
+      "name": "Connections to Rare Ports",
+      "desc": "Connections to non-standard ports — C2 indicator",
+      "sql": "SELECT p.name, p.pid, p.path, s.remote_address, s.remote_port FROM process_open_sockets AS s JOIN processes AS p ON s.pid = p.pid WHERE s.state = 'ESTABLISHED' AND s.family = 2 AND s.remote_address != '127.0.0.1' AND s.remote_port NOT IN (80,443,22,53,25,587,993,995,8080,8443) ORDER BY s.remote_port;"
+    },
+    {
+      "name": "Processes in Temp Dirs",
+      "desc": "Processes running from /tmp or /dev/shm",
+      "sql": "SELECT pid, name, path, uid, cmdline, datetime(start_time,'unixepoch') AS started FROM processes WHERE path LIKE '/tmp/%' OR path LIKE '/dev/shm/%' OR path LIKE '/var/tmp/%' ORDER BY start_time DESC;"
+    },
+    {
+      "name": "Root Processes",
+      "desc": "All processes running as root",
+      "sql": "SELECT pid, name, path, cmdline, datetime(start_time,'unixepoch') AS started FROM processes WHERE uid = 0 ORDER BY start_time DESC LIMIT 20;"
+    },
+    {
+      "name": "Zombie Processes",
+      "desc": "Zombie processes — may indicate buggy or malicious parent",
+      "sql": "SELECT pid, name, parent, state, datetime(start_time,'unixepoch') AS started FROM processes WHERE state = 'Z';"
+    },
+    {
+      "name": "Files Modified in /etc (1h)",
+      "desc": "Config files changed in the last hour",
+      "sql": "SELECT path, filename, uid, mode, datetime(mtime,'unixepoch') AS modified FROM file WHERE path LIKE '/etc/%' AND mtime > (strftime('%s','now') - 3600) AND type = 'regular' ORDER BY mtime DESC;"
+    },
+    {
+      "name": "New Files in /tmp (1h)",
+      "desc": "Files created in temp dirs in last hour",
+      "sql": "SELECT path, filename, uid, mode, size, datetime(mtime,'unixepoch') AS modified FROM file WHERE (directory = '/tmp' OR directory = '/dev/shm' OR directory = '/var/tmp') AND mtime > (strftime('%s','now') - 3600) AND type = 'regular' ORDER BY mtime DESC;"
+    },
+    {
+      "name": "System Resource Snapshot",
+      "desc": "CPU cores, RAM, uptime summary",
+      "sql": "SELECT s.hostname, s.cpu_brand, s.cpu_logical_cores, ROUND(s.physical_memory/1073741824.0,2) AS memory_gb, u.days AS uptime_days, u.hours AS uptime_hours FROM system_info AS s, uptime AS u;"
+    },
+    {
+      "name": "Disk Usage",
+      "desc": "Filesystem usage across all mounts",
+      "sql": "SELECT path, device, type, ROUND(100.0-(blocks_free*100.0/blocks),1) AS percent_used FROM mounts WHERE blocks > 0 AND type NOT IN ('tmpfs','devtmpfs','proc','sysfs','cgroup','cgroup2') ORDER BY percent_used DESC;"
+    },
+    {
+      "name": "ARP Cache Changes",
+      "desc": "Current ARP table — spot new or suspicious entries",
+      "sql": "SELECT address, mac, interface FROM arp_cache ORDER BY interface, address;"
+    },
+    {
+      "name": "Cron Jobs Watch",
+      "desc": "Current state of all cron job files",
+      "sql": "SELECT path, filename, uid, size, datetime(mtime,'unixepoch') AS modified FROM file WHERE (path LIKE '/etc/cron.d/%' OR path LIKE '/var/spool/cron/crontabs/%') AND type = 'regular' ORDER BY mtime DESC;"
+    },
+    {
+      "name": "SSH Authorized Keys Watch",
+      "desc": "Monitor authorized_keys for new entries",
+      "sql": "SELECT path, uid, size, datetime(mtime,'unixepoch') AS modified, datetime(atime,'unixepoch') AS accessed FROM file WHERE path LIKE '/home/%/.ssh/authorized_keys' OR path = '/root/.ssh/authorized_keys' ORDER BY mtime DESC;"
+    },
+    {
+      "name": "Loaded Kernel Modules",
+      "desc": "All active kernel modules",
+      "sql": "SELECT name, size, status FROM kernel_modules WHERE status = 'Live' ORDER BY name;"
+    },
+    {
+      "name": "Process Groups By User",
+      "desc": "Count of running processes per user",
+      "sql": "SELECT u.username, COUNT(*) AS process_count FROM processes AS p JOIN users AS u ON p.uid = u.uid GROUP BY u.username ORDER BY process_count DESC;"
+    },
+    {
+      "name": "Open Files in Suspicious Paths",
+      "desc": "Processes with open files in /tmp or /dev/shm",
+      "sql": "SELECT p.name, p.pid, p.uid, f.path AS open_file FROM process_open_files AS f JOIN processes AS p ON f.pid = p.pid WHERE f.path LIKE '/tmp/%' OR f.path LIKE '/dev/shm/%' OR f.path LIKE '/var/tmp/%' ORDER BY p.name;"
+    }
+  ]
+}

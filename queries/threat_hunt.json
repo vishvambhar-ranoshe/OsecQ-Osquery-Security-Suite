@@ -1,0 +1,106 @@
+{
+  "module": "threat_hunt",
+  "description": "Threat Hunting Queries — Full Attack Lifecycle",
+  "queries": [
+    {
+      "name": "Backdoor Root Accounts",
+      "desc": "UID=0 accounts that are NOT root — critical finding",
+      "sql": "SELECT username, uid, gid, shell, directory FROM users WHERE uid = 0 AND username != 'root';"
+    },
+    {
+      "name": "Processes From Suspicious Paths",
+      "desc": "Processes running from /tmp, /dev/shm or deleted binaries",
+      "sql": "SELECT pid, name, path, uid, cmdline, datetime(start_time,'unixepoch') AS started FROM processes WHERE path LIKE '/tmp/%' OR path LIKE '/dev/shm/%' OR path LIKE '/var/tmp/%' OR path = '' OR path LIKE '% (deleted)%' ORDER BY start_time DESC;"
+    },
+    {
+      "name": "Web Shell Detection",
+      "desc": "Shells spawned by web server processes",
+      "sql": "SELECT child.pid, child.name AS shell, child.cmdline, parent.name AS spawned_by, parent.path AS parent_path, datetime(child.start_time,'unixepoch') AS started FROM processes AS child JOIN processes AS parent ON child.parent = parent.pid WHERE child.name IN ('bash','sh','zsh','dash','fish','ksh') AND parent.name IN ('apache2','apache','httpd','nginx','php','php-fpm','python','python3','ruby','node','java','tomcat','uwsgi','gunicorn');"
+    },
+    {
+      "name": "Reverse Shell Candidates",
+      "desc": "Shell or interpreter with active external connection",
+      "sql": "SELECT p.pid, p.name, p.path, p.cmdline, s.remote_address, s.remote_port, s.state FROM processes AS p JOIN process_open_sockets AS s ON p.pid = s.pid WHERE p.name IN ('bash','sh','nc','ncat','netcat','python','python3','perl','ruby') AND s.state = 'ESTABLISHED' AND s.family = 2 AND s.remote_address != '127.0.0.1' ORDER BY p.start_time DESC;"
+    },
+    {
+      "name": "LD_PRELOAD Injection",
+      "desc": "Processes with LD_PRELOAD set — rootkit indicator",
+      "sql": "SELECT p.pid, p.name, p.path, e.value AS ld_preload, u.username FROM process_envs AS e JOIN processes AS p ON e.pid = p.pid JOIN users AS u ON p.uid = u.uid WHERE e.key = 'LD_PRELOAD' AND e.value != '' ORDER BY p.pid;"
+    },
+    {
+      "name": "Suspicious Cmdline Patterns",
+      "desc": "Pipe-to-shell, base64 decode, /dev/tcp patterns",
+      "sql": "SELECT pid, path, cmdline, uid FROM processes WHERE cmdline LIKE '%/dev/tcp/%' OR cmdline LIKE '%base64 -d%' OR cmdline LIKE '%curl%bash%' OR cmdline LIKE '%wget%bash%' OR cmdline LIKE '%python%socket%' OR cmdline LIKE '%perl%socket%' ORDER BY pid;"
+    },
+    {
+      "name": "SUID Binaries",
+      "desc": "All SUID binaries — check for unexpected entries",
+      "sql": "SELECT path, filename, uid, mode, datetime(mtime,'unixepoch') AS modified FROM file WHERE (path LIKE '/usr/bin/%' OR path LIKE '/bin/%' OR path LIKE '/usr/local/bin/%' OR path LIKE '/tmp/%') AND mode LIKE '4%' AND type = 'regular' ORDER BY mtime DESC;"
+    },
+    {
+      "name": "Cron Job Files",
+      "desc": "All cron files — detect persistence via cron",
+      "sql": "SELECT path, filename, uid, mode, size, datetime(mtime,'unixepoch') AS modified FROM file WHERE (path LIKE '/etc/cron.d/%' OR path LIKE '/var/spool/cron/crontabs/%' OR path LIKE '/etc/cron.daily/%' OR path LIKE '/etc/cron.hourly/%') AND type = 'regular' ORDER BY mtime DESC;"
+    },
+    {
+      "name": "SSH Authorized Keys",
+      "desc": "All authorized_keys files — SSH backdoor detection",
+      "sql": "SELECT path, uid, gid, mode, size, datetime(mtime,'unixepoch') AS modified FROM file WHERE path LIKE '/home/%/.ssh/authorized_keys' OR path = '/root/.ssh/authorized_keys' ORDER BY mtime DESC;"
+    },
+    {
+      "name": "Systemd Service Files",
+      "desc": "Recently modified systemd services — persistence check",
+      "sql": "SELECT path, filename, uid, mode, datetime(mtime,'unixepoch') AS modified FROM file WHERE (path LIKE '/etc/systemd/system/%' OR path LIKE '/lib/systemd/system/%') AND filename LIKE '%.service' AND type = 'regular' ORDER BY mtime DESC LIMIT 20;"
+    },
+    {
+      "name": "Startup Script Changes",
+      "desc": "Modified shell startup and init scripts",
+      "sql": "SELECT path, filename, uid, mode, datetime(mtime,'unixepoch') AS modified FROM file WHERE (path LIKE '/etc/profile.d/%' OR path LIKE '/etc/init.d/%' OR path = '/etc/rc.local' OR path LIKE '/home/%/.bashrc' OR path LIKE '/home/%/.bash_profile' OR path = '/root/.bashrc') AND type = 'regular' ORDER BY mtime DESC;"
+    },
+    {
+      "name": "Listening Ports",
+      "desc": "All TCP listening ports with owning process",
+      "sql": "SELECT p.name, p.pid, p.path, l.port, l.address, u.username FROM listening_ports AS l JOIN processes AS p ON l.pid = p.pid JOIN users AS u ON p.uid = u.uid WHERE l.protocol = 6 ORDER BY l.port;"
+    },
+    {
+      "name": "Active Outbound Connections",
+      "desc": "Established external connections with process info",
+      "sql": "SELECT p.name, p.pid, p.path, s.remote_address, s.remote_port, s.state, u.username FROM process_open_sockets AS s JOIN processes AS p ON s.pid = p.pid JOIN users AS u ON p.uid = u.uid WHERE s.state = 'ESTABLISHED' AND s.family = 2 AND s.remote_address != '127.0.0.1' ORDER BY s.remote_port;"
+    },
+    {
+      "name": "ARP Cache",
+      "desc": "IP to MAC mappings — detect ARP spoofing",
+      "sql": "SELECT address, mac, interface FROM arp_cache ORDER BY address;"
+    },
+    {
+      "name": "Kernel Module Anomalies",
+      "desc": "Kernel modules with unusual status — rootkit indicator",
+      "sql": "SELECT name, size, status, address FROM kernel_modules WHERE status != 'Live' OR size = 0 ORDER BY name;"
+    },
+    {
+      "name": "Critical File Hashes",
+      "desc": "SHA256 hashes of critical system binaries",
+      "sql": "SELECT f.path, f.size, datetime(f.mtime,'unixepoch') AS modified, h.md5, h.sha256 FROM file AS f JOIN hash AS h ON f.path = h.path WHERE f.path IN ('/bin/bash','/bin/ls','/bin/ps','/usr/bin/sudo','/usr/bin/ssh','/usr/bin/who','/bin/find','/etc/passwd','/etc/shadow','/etc/sudoers') ORDER BY f.path;"
+    },
+    {
+      "name": "Suspicious Shell History",
+      "desc": "Dangerous commands in shell history",
+      "sql": "SELECT username, command FROM shell_history WHERE command LIKE '%wget%' OR command LIKE '%curl%' OR command LIKE '%nc %' OR command LIKE '%base64%' OR command LIKE '%chmod +x%' OR command LIKE '%/etc/shadow%' OR command LIKE '%nmap%' OR command LIKE '%msfconsole%' ORDER BY username;"
+    },
+    {
+      "name": "Files in Temp Directories",
+      "desc": "All files in /tmp and /dev/shm",
+      "sql": "SELECT path, filename, uid, mode, size, datetime(mtime,'unixepoch') AS modified FROM file WHERE (directory = '/tmp' OR directory = '/dev/shm' OR directory = '/var/tmp') AND type = 'regular' ORDER BY mtime DESC;"
+    },
+    {
+      "name": "Processes With No Path",
+      "desc": "Processes with empty executable path",
+      "sql": "SELECT pid, name, uid, cmdline, datetime(start_time,'unixepoch') AS started FROM processes WHERE path = '' AND uid > 0 ORDER BY start_time DESC;"
+    },
+    {
+      "name": "Network Interface Promiscuous Mode",
+      "desc": "Interfaces in promiscuous mode — sniffing indicator",
+      "sql": "SELECT name, mac, flags FROM interface_details WHERE flags & 256 ORDER BY name;"
+    }
+  ]
+}
