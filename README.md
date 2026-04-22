@@ -1,4 +1,4 @@
-# OsecQ — Osquery Security Suite
+# OsecQ - Osquery Security Suite
 
 <div align="center">
 
@@ -27,7 +27,7 @@
 
 ## What Is OsecQ?
 
-OsecQ is a unified, menu-driven terminal security suite that turns **osquery into a complete endpoint investigation platform**. Instead of running dozens of separate Linux commands across multiple terminals, OsecQ brings everything into one interface — powered by SQL queries against the live operating system.
+OsecQ is a unified, menu-driven terminal security suite that turns **osquery into a complete endpoint investigation platform**. Instead of running dozens of separate Linux commands across multiple terminals, OsecQ brings everything into one interface  powered by SQL queries against the live operating system.
 
 **Built for:**
 
@@ -149,7 +149,7 @@ Watch the system continuously with live delta tracking between cycles.
 | Open files in suspicious paths | Yes |
 | Disk usage | — |
 
-> In continuous mode, OsecQ tracks result counts between cycles and shows delta indicators — you see the exact moment a new connection opens or a new process starts.
+> In continuous mode, OsecQ tracks result counts between cycles and shows delta indicators  you see the exact moment a new connection opens or a new process starts.
 
 **Total: 20 queries**
 
@@ -367,11 +367,8 @@ Cannot be fooled by LD_PRELOAD rootkits that hook userspace tools like ps, netst
 - [ ] YARA scanning module — malware pattern matching against file content
 - [ ] Fleet integration — query multiple machines from one interface
 - [ ] Timeline view — correlate events across modules by timestamp
-- [ ] Baseline comparison — detect drift from known-good system state
-- [ ] HTML report export — browser-viewable investigation reports
 - [ ] Slack and email alerting — push critical findings to communication channels
 - [ ] Custom query builder — write and save your own queries from the UI
-- [ ] CVE checker — cross-reference installed packages against CVE database
 
 ---
 
@@ -396,7 +393,7 @@ OsecQ is intended for authorized security testing, incident response, and defens
 
 **Vishvambhar Ranoshe**
 
-> All the way to building a production-grade security suite with 74+ detection queries, real-time monitoring, MITRE ATT&CK aligned IR, and an auto-saving report engine. Not assembled from tutorials—engineered through understanding.
+> All the way to building a production-grade security suite with 74+ detection queries, real-time monitoring, MITRE ATT&CK aligned IR, and an auto-saving report engine. Not assembled from tutorials, engineered through understanding.
 
 ---
 
